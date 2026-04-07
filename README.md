@@ -49,7 +49,7 @@ pip install -r requirements.txt
   },
   "reranker": {
     "enabled": true,
-    "model_local_path": "C:/myfile/project/ms-marco-MiniLM-L6-v2"
+    "model_local_path": "/your/path/ms-marco-MiniLM-L6-v2"
   },
   "cache": {
     "enabled": true,
