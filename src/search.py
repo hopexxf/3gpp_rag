@@ -315,7 +315,7 @@ def search(query, spec_filter=None, version_filter=None, release=None, top_n=5,
     if release is None:
         release = config.get("default_release", "Rel-19")
     
-    DB_DIR = get_db_path(release)
+    DB_DIR = get_db_path(config, release)
     
     # Use consistent collection name
     collection_name = "3gpp_complete"
