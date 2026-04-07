@@ -198,9 +198,9 @@ def get_path(config: Dict, name: str) -> Path:
 def get_db_path(config: Dict, release: str) -> Path:
     """获取指定 Release 的数据库路径"""
     work_dir = get_path(config, "work_dir")
-    db_base = config.get("database", {}).get("base_dir", "chroma_db")
+    # 新目录结构：data/chroma_db/rel19
     release_lower = release.lower().replace("-", "")
-    return work_dir / db_base / release_lower
+    return work_dir / "data" / "chroma_db" / release_lower
 
 
 def get_embedding_model(config: Dict) -> str:
