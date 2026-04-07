@@ -1,8 +1,8 @@
-# 3GPP RAN RAG 检索系统 V2.0
+# 3GPP RAN RAG 检索系统 V2.1
 
 ## 简介
 
-本系统是一个针对 3GPP RAN（无线接入网）协议规范的语义检索工具。V2.0 版本支持：
+本系统是一个针对 3GPP RAN（无线接入网）协议规范的语义检索工具。V2.1 版本支持：
 
 - **分库存储**：按 Release 独立数据库（Rel-19、Rel-20 等）
 - **混合检索**：BM25 关键词 + 向量语义 RRF 融合
@@ -119,6 +119,12 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 - **协议结构理解**：层级标题、条款编号自动识别
 - **附录过滤**：自动跳过不适合检索的附录表格
 - **核心章节优先**：收录协议核心规范，非测试用例
+
+### 6️⃣ 智能查询增强（V2.1新增）
+- **查询扩展**：50个内置电信术语同义词，自动补充专业词汇
+- **重排序优化**：Cross-Encoder二次排序，Top-K精度提升15-25%
+- **模糊缓存**：相似查询缓存，重复查询毫秒级响应
+- **日志轮转**：自动管理日志大小，10MB×5文件限制
 
 ---
 
@@ -307,117 +313,44 @@ python src/manage_spec.py config --set default_release Rel-20
 
 ---
 
-## 下一步策划
+## V2.1 已完成功能 ✅
 
-### 任务1：查询扩展（Query Expansion）
-
-**目标**：自动补充同义词，提升检索召回率
-
-**优先级**：中
-
-**实现方案**：
-```python
-QUERY_EXPANSIONS = {
-    "BWP": ["Bandwidth Part", "带宽部分", "初始BWP", "专用BWP"],
-    "PDCCH": ["Physical Downlink Control Channel", "下行控制信道", "DCI"],
-    "PUSCH": ["Physical Uplink Shared Channel", "上行共享信道"],
-    "RedCap": ["Reduced Capability", "轻量化UE", "eRedCap", "redcap"],
-    "CSI": ["Channel State Information", "信道状态信息"],
-    "TA": ["Timing Advance", "时间提前量"],
-    "PRACH": ["Physical Random Access Channel", "随机接入信道"],
-    "PUCCH": ["Physical Uplink Control Channel", "上行控制信道"],
-    "SSB": ["Synchronization Signal Block", "同步信号块", "SS/PBCH"],
-    "CORESET": ["Control Resource Set", "控制资源集"],
-}
-```
-
-**预期效果**：
-- 用户查询 `BWP` 时，自动扩展为 `BWP OR "Bandwidth Part" OR "带宽部分" OR ...`
-- 召回率提升 20-30%
-
-**涉及文件**：`search.py`
-
-**预估工时**：30分钟
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| **目录结构重构** | ✅ | config/, src/, data/, logs/ 分离 |
+| **查询扩展** | ✅ | 50个内置术语 + 自动学习 + 用户自定义 |
+| **重排序** | ✅ | Cross-Encoder二次排序，本地模型优先 |
+| **模糊缓存** | ✅ | LRU缓存，100条容量 |
+| **日志轮转** | ✅ | 10MB×5文件限制 |
+| **可移植配置** | ✅ | 配置文件+环境变量，无硬编码路径 |
 
 ---
 
-### 任务2：重排序（Reranker）
+## V2.2 计划功能（未来）
 
-**目标**：使用 Cross-Encoder 对检索结果二次排序，提升精度
-
-**优先级**：中
-
-**实现方案**：
-```python
-# 使用 Cross-Encoder 进行相关性重排
-# 流程：Hybrid检索 Top20 → Cross-Encoder重排 → Top5
-
-from sentence_transformers import CrossEncoder
-
-reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-scores = reranker.predict([(query, doc) for doc in top_k_docs])
-```
-
-**推荐模型**：`cross-encoder/ms-marco-MiniLM-L-6-v2`
-- 与现有向量模型（all-MiniLM-L6-v2）同一家族
-- 专为搜索相关性训练
-- 轻量快速（~400MB）
-
-**预期效果**：
-- Top-K 检索精度提升 15-25%
-- 特别是复杂查询和多义词场景
-
-**涉及文件**：`search.py`
-
-**预估工时**：1-2小时
+| 功能 | 优先级 | 说明 |
+|------|--------|------|
+| **Web API** | 中 | 提供HTTP API接口 |
+| **Docker部署** | 中 | 容器化部署支持 |
+| **LLM集成** | 低 | 结合大模型生成回答 |
+| **更多协议** | 低 | 支持Rel-20及后续版本 |
 
 ---
 
-### 任务3：模糊缓存（Fuzzy Cache）
+## 低优先级任务（暂不实施）
 
-**目标**：缓存相似查询结果，85%相似度命中直接返回
-
-**优先级**：中
-
-**实现方案**：
-```python
-# 85%相似度模糊匹配缓存
-similarity = util.cos_sim(query_emb, cache_emb)
-if similarity > 0.85:
-    return cached_result  # 直接返回缓存
-
-# LRU淘汰策略
-MAX_CACHE_SIZE = 100
-while len(cache) > MAX_CACHE_SIZE:
-    cache.popitem(last=False)
-```
-
-**预期效果**：
-- 重复查询响应时间从秒级降至毫秒级
-- 节省计算资源
-
-**涉及文件**：`search.py`
-
-**预估工时**：30分钟
-
----
-
-### 低优先级任务（未来可选）
-
-| 任务 | 说明 | 优先级 | 暂不实施原因 |
-|------|------|--------|-------------|
-| **影响分析** | 分析条款变更影响范围，回答"修改某条款会影响哪些其他条款" | 低 ⚠️ | 需要构建 NetworkX 图谱，增加项目复杂度 |
-| **语义图谱** | 构建条款间的父子/引用关系图 | 低 ⚠️ | 已有向量化检索，功能重叠 |
-| **邻域上下文** | 获取条款父子/兄弟节点上下文 | 低 ⚠️ | 已有向量化检索，功能重叠 |
-
-> **说明**：以上功能需要引入图数据库/NetworkX，与现有向量化检索架构冲突，暂不实施。
+| 任务 | 说明 | 暂不实施原因 |
+|------|------|-------------|
+| **影响分析** | 分析条款变更影响范围 | 需要NetworkX图谱，增加复杂度 |
+| **语义图谱** | 构建条款关系图 | 与向量化检索功能重叠 |
+| **邻域上下文** | 获取条款父子节点 | 与向量化检索功能重叠 |
 
 ---
 
 ### 改进路线图
 
 ```
-V2.0 (当前)                    V2.1 (计划)                   V3.0 (远期)
+V2.0 (已完成)                 V2.1 (已完成)                V2.2 (计划)
 ─────────────────────────────────────────────────────────────────────────────
 Hybrid检索                  →  Hybrid + Cross-Encoder    →  + Web API
 硬编码路径                  →  配置文件+环境变量          →  + Docker部署
