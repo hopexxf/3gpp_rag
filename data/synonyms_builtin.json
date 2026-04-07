@@ -1,0 +1,70 @@
+{
+  "_comment": "内置同义词典 - 50个核心术语，程序只读，用户请勿修改。如需自定义请在 config.json 中配置",
+  "_version": "1.0",
+  "_count": 50,
+  
+  "物理层术语": {
+    "PRACH": ["Physical Random Access Channel", "随机接入信道", "随机接入"],
+    "PUSCH": ["Physical Uplink Shared Channel", "上行共享信道"],
+    "PUCCH": ["Physical Uplink Control Channel", "上行控制信道"],
+    "PDCCH": ["Physical Downlink Control Channel", "下行控制信道"],
+    "PDSCH": ["Physical Downlink Shared Channel", "下行共享信道"],
+    "PBCH": ["Physical Broadcast Channel", "广播信道"],
+    "SSB": ["Synchronization Signal Block", "同步信号块", "SS/PBCH", "同步块"],
+    "CSI": ["Channel State Information", "信道状态信息"],
+    "DMRS": ["Demodulation Reference Signal", "解调参考信号"],
+    "PTRS": ["Phase Tracking Reference Signal", "相位跟踪参考信号"],
+    "BWP": ["Bandwidth Part", "带宽部分", "带宽块"],
+    "CORESET": ["Control Resource Set", "控制资源集"],
+    "RNTI": ["Radio Network Temporary Identifier", "无线网络临时标识"],
+    "DCI": ["Downlink Control Information", "下行控制信息"],
+    "TCI": ["Transmission Configuration Indication", "传输配置指示"]
+  },
+  
+  "MAC/RLC/PDCP层": {
+    "BSR": ["Buffer Status Report", "缓存状态报告"],
+    "SR": ["Scheduling Request", "调度请求"],
+    "HARQ": ["Hybrid Automatic Repeat Request", "混合自动重传请求"],
+    "ARQ": ["Automatic Repeat Request", "自动重传请求"],
+    "RLC": ["Radio Link Control", "无线链路控制"],
+    "PDCP": ["Packet Data Convergence Protocol", "分组数据汇聚协议"],
+    "DRX": ["Discontinuous Reception", "非连续接收"],
+    "RACH": ["Random Access Channel", "随机接入信道"],
+    "TA": ["Timing Advance", "时间提前量", "定时提前"],
+    "C-RNTI": ["Cell RNTI", "小区RNTI"]
+  },
+  
+  "RRC/信令": {
+    "RRC": ["Radio Resource Control", "无线资源控制"],
+    "MIB": ["Master Information Block", "主信息块"],
+    "SIB": ["System Information Block", "系统信息块"],
+    "SRB": ["Signaling Radio Bearer", "信令无线承载"],
+    "DRB": ["Data Radio Bearer", "数据无线承载"],
+    "PCCH": ["Paging Control Channel", "寻呼控制信道"],
+    "BCCH": ["Broadcast Control Channel", "广播控制信道"],
+    "CCCH": ["Common Control Channel", "公共控制信道"],
+    "DCCH": ["Dedicated Control Channel", "专用控制信道"],
+    "NAS": ["Non-Access Stratum", "非接入层"]
+  },
+  
+  "系统架构": {
+    "NR": ["New Radio", "5G NR", "新空口"],
+    "LTE": ["Long Term Evolution", "4G"],
+    "ENDC": ["E-UTRA NR Dual Connectivity", "LTE-NR双连接"],
+    "NSA": ["Non-Standalone", "非独立组网"],
+    "SA": ["Standalone", "独立组网"],
+    "gNB": ["gNodeB", "5G基站"],
+    "ng-eNB": ["Next Generation eNB", "下一代演进基站"],
+    "UE": ["User Equipment", "用户设备", "终端"],
+    "MIMO": ["Multiple Input Multiple Output", "多输入多输出"],
+    "CA": ["Carrier Aggregation", "载波聚合"]
+  },
+  
+  "新技术/特性": {
+    "RedCap": ["Reduced Capability", "轻量化", "eRedCap"],
+    "NTN": ["Non-Terrestrial Network", "非地面网络", "卫星通信"],
+    "IAB": ["Integrated Access and Backhaul", "集成接入和回传"],
+    "Sidelink": ["Sidelink", "侧行链路", "直连通信"],
+    "Positioning": ["定位", "定位服务"]
+  }
+}

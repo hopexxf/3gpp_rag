@@ -32,9 +32,10 @@ def find_config_file() -> Optional[Path]:
     """
     查找配置文件，搜索顺序：
     1. 环境变量 GPP_RAG_CONFIG 指定的路径
-    2. 当前工作目录
-    3. 脚本所在目录
-    4. 父目录（向上递归3层）
+    2. config/config.json（新目录结构）
+    3. 当前工作目录
+    4. 脚本所在目录的config子目录
+    5. 父目录（向上递归3层）
     """
     # 1. 环境变量指定
     env_config = os.environ.get("GPP_RAG_CONFIG")
@@ -44,22 +45,35 @@ def find_config_file() -> Optional[Path]:
             return path
         raise ConfigError(f"环境变量 GPP_RAG_CONFIG 指定的配置文件不存在: {env_config}")
     
-    # 2. 当前工作目录
+    # 2. 新目录结构：config/config.json
+    new_structure = Path.cwd() / "config" / CONFIG_FILENAME
+    if new_structure.exists():
+        return new_structure
+    
+    # 3. 当前工作目录
     cwd_config = Path.cwd() / CONFIG_FILENAME
     if cwd_config.exists():
         return cwd_config
     
-    # 3. 脚本所在目录
+    # 4. 脚本所在目录的config子目录（新结构）
     script_dir = Path(__file__).parent.resolve()
+    script_config_new = script_dir / "config" / CONFIG_FILENAME
+    if script_config_new.exists():
+        return script_config_new
+    
+    # 5. 脚本所在目录（旧结构兼容）
     script_config = script_dir / CONFIG_FILENAME
     if script_config.exists():
         return script_config
     
-    # 4. 向上递归查找
+    # 6. 向上递归查找
     for parent in script_dir.parents[:3]:
-        parent_config = parent / CONFIG_FILENAME
-        if parent_config.exists():
-            return parent_config
+        parent_config_new = parent / "config" / CONFIG_FILENAME
+        if parent_config_new.exists():
+            return parent_config_new
+        parent_config_old = parent / CONFIG_FILENAME
+        if parent_config_old.exists():
+            return parent_config_old
     
     return None
 
