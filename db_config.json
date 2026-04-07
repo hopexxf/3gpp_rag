@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "description": "3GPP RAG Database Configuration",
+  "databases": {
+    "Rel-19": {
+      "path": "chroma_db/rel19",
+      "collection": "3gpp_complete",
+      "status": "active",
+      "created": "2026-04-07",
+      "specs_count": 46,
+      "documents_count": 14743
+    },
+    "Rel-20": {
+      "path": "chroma_db/rel20",
+      "collection": "3gpp_complete",
+      "status": "placeholder",
+      "created": null,
+      "specs_count": 0,
+      "documents_count": 0
+    }
+  },
+  "default_release": "Rel-19",
+  "settings": {
+    "normal_max_size_mb": 1.0,
+    "skip_large_max_size_mb": 3.0,
+    "batch_size": 100,
+    "max_content_length": 5000,
+    "embedding_model": "all-MiniLM-L6-v2"
+  }
+}

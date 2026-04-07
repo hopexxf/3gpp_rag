@@ -1,0 +1,51 @@
+{
+  "_comment": "3GPP RAG 工程配置文件 - 所有路径使用正斜杠/，支持环境变量覆盖",
+  
+  "paths": {
+    "_work_dir": "工程根目录，包含脚本和数据库。若使用相对路径，则相对于脚本所在目录",
+    "work_dir": "C:/myfile/qclaw/3gpp_rag_work",
+    
+    "_protocol_base": "协议源文件根目录，需包含 Rel-19/R19/rel19/REL19 格式的子目录",
+    "protocol_base": "C:/myfile/project/3gpp_protocol",
+    
+    "_log_dir": "日志输出目录，自动创建。若为空或null，则使用work_dir/logs",
+    "log_dir": "C:/myfile/qclaw/log"
+  },
+  
+  "protocol_structure": {
+    "_comment": "协议目录结构约束，程序自动检测以下格式的Release目录",
+    "release_formats": ["Rel-19", "R19", "rel19", "REL19", "Rel-20", "R20", "rel20", "REL20"],
+    "required_subdir": "38_series",
+    "file_pattern": "{spec_number}*.zip",
+    "_example": "C:/myfile/project/3gpp_protocol/Rel-19/38_series/38300-j20.zip"
+  },
+  
+  "environment_override": {
+    "_comment": "环境变量可覆盖以上配置，优先级: 环境变量 > 配置文件",
+    "env_prefix": "GPP_RAG_",
+    "mapping": {
+      "GPP_RAG_WORK_DIR": "paths.work_dir",
+      "GPP_RAG_PROTOCOL_BASE": "paths.protocol_base",
+      "GPP_RAG_LOG_DIR": "paths.log_dir"
+    }
+  },
+  
+  "database": {
+    "_comment": "数据库配置",
+    "base_dir": "chroma_db",
+    "default_release": "Rel-19",
+    "embedding_model": "all-MiniLM-L6-v2",
+    "_embedding_model_note": "HuggingFace模型名称，如: all-MiniLM-L6-v2",
+    "embedding_model_local_path": "C:/myfile/project/all-MiniLM-L6-v2",
+    "_embedding_model_local_path_note": "本地模型路径，优先使用。为空时从HuggingFace下载。例: C:/models/all-MiniLM-L6-v2"
+  },
+  
+  "processing": {
+    "_comment": "处理参数",
+    "encoding": "utf-8",
+    "normal_max_size_mb": 1.0,
+    "skip_large_max_size_mb": 3.0,
+    "batch_size": 100,
+    "max_content_length": 5000
+  }
+}
