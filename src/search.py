@@ -315,7 +315,9 @@ def search(query, spec_filter=None, version_filter=None, release=None, top_n=5,
     if release is None:
         release = config.get("default_release", "Rel-19")
     
-    DB_DIR = get_db_path(config, release)
+    # Use the actual database path with data/ prefix
+    work_dir = get_path(config, "work_dir")
+    DB_DIR = work_dir / "data" / "chroma_db" / release.lower().replace("-", "")
     
     # Use consistent collection name
     collection_name = "3gpp_complete"
