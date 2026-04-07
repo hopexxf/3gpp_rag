@@ -10,8 +10,13 @@
 - **批量管理**：批量添加、更新、同步
 - **可移植配置**：所有路径通过 `config.json` 配置，支持环境变量覆盖
 
-**管理工具**: `manage_spec.py`
-**检索工具**: `search.py`
+**管理工具**: `src/manage_spec.py`
+**检索工具**: `src/search.py`
+
+**V2.1 新增功能**:
+- **查询扩展**：50个内置电信术语同义词，支持自动学习补充
+- **重排序**：Cross-Encoder二次排序，提升Top-K精度
+- **模糊缓存**：相似查询缓存，毫秒级响应
 
 ---
 
@@ -25,7 +30,7 @@ pip install -r requirements.txt
 
 ### 2. 配置路径
 
-编辑 `config.json`，设置你的路径：
+编辑 `config/config.json`，设置你的路径：
 
 ```json
 {
@@ -35,7 +40,20 @@ pip install -r requirements.txt
     "log_dir": "/your/path/logs"
   },
   "database": {
-    "embedding_model": "all-MiniLM-L6-v2"
+    "embedding_model": "all-MiniLM-L6-v2",
+    "embedding_model_local_path": ""
+  },
+  "query_expansion": {
+    "enabled": true,
+    "custom_terms": {}
+  },
+  "reranker": {
+    "enabled": true,
+    "model_local_path": "C:/myfile/project/ms-marco-MiniLM-L6-v2"
+  },
+  "cache": {
+    "enabled": true,
+    "max_size": 100
   }
 }
 ```
@@ -45,8 +63,9 @@ pip install -r requirements.txt
 - 协议文件放在 `{protocol_base}/Rel-19/38_series/*.zip`
 
 **模型配置**：
-- `embedding_model`: 默认 `"all-MiniLM-L6-v2"`，自动从 HuggingFace 下载
-- 可配置本地路径: `"C:/models/all-MiniLM-L6-v2"`（离线环境）
+- `embedding_model`: 向量模型，默认 `"all-MiniLM-L6-v2"`
+- `reranker/model_local_path`: 重排序模型本地路径
+- 本地路径优先，为空时从 HuggingFace 下载
 
 ### 3. 或使用环境变量（可选）
 
@@ -145,71 +164,71 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 ```bash
 # 查看状态
-python manage_spec.py status
+python src/manage_spec.py status
 
 # 添加协议
-python manage_spec.py add 38.300 --release Rel-19
+python src/manage_spec.py add 38.300 --release Rel-19
 
 # 批量添加
-python manage_spec.py batch-add --release Rel-19
+python src/manage_spec.py batch-add --release Rel-19
 
 # 更新协议
-python manage_spec.py update 38.300 --release Rel-19
+python src/manage_spec.py update 38.300 --release Rel-19
 
 # 删除协议
-python manage_spec.py remove 38.300 --release Rel-19
+python src/manage_spec.py remove 38.300 --release Rel-19
 
 # 列出已收录
-python manage_spec.py list --release Rel-19
+python src/manage_spec.py list --release Rel-19
 ```
 
 ### 2. 检索协议
 
 ```bash
 # 基本检索
-python search.py "MAC CE for BSR"
+python src/search.py "MAC CE for BSR"
 
 # 指定 Release
-python search.py "RRC connection" --release Rel-19
+python src/search.py "RRC connection" --release Rel-19
 
 # 跨版本检索
-python search.py "carrier aggregation" --release Rel-19,Rel-20
+python src/search.py "carrier aggregation" --release Rel-19,Rel-20
 
 # 指定协议
-python search.py "PUSCH" --spec 38.214
+python src/search.py "PUSCH" --spec 38.214
 
 # 精确编号
-python search.py "6.1.3.1" --spec 38.321 --mode bm25
+python src/search.py "6.1.3.1" --spec 38.321 --mode bm25
 
 # 语义聚类 (D1)
-python search.py "measurement" --cluster
+python src/search.py "measurement" --cluster
 
 # 关联推荐 (D2)
-python search.py "BSR" --recommend
+python src/search.py "BSR" --recommend
 ```
 
 ### 3. 版本对比
 
 ```bash
 # 对比差异
-python manage_spec.py diff 38.300 --from Rel-19 --to Rel-20
+python src/manage_spec.py diff 38.300 --from Rel-19 --to Rel-20
 
 # 查看新增条款
-python manage_spec.py new-clauses 38.300 --from Rel-19 --to Rel-20
+python src/manage_spec.py new-clauses 38.300 --from Rel-19 --to Rel-20
 ```
 
 ### 4. 数据管理
 
 ```bash
 # 生成报告
-python manage_spec.py report
+python src/manage_spec.py report
 
 # 校验数据
-python manage_spec.py validate --release Rel-19
+python src/manage_spec.py validate --release Rel-19
 
 # 配置管理
-python manage_spec.py config --list
-python manage_spec.py config --set default_release Rel-20
+python src/manage_spec.py config --list
+python src/manage_spec.py config --set default_release Rel-20
 ```
 
 ---
@@ -218,23 +237,32 @@ python manage_spec.py config --set default_release Rel-20
 
 ```
 3gpp_rag_work/
-├── config.json             # 主配置文件（路径、参数）
-├── config_loader.py        # 配置加载模块
-├── manage_spec.py          # 统一管理脚本
-├── search.py               # 检索脚本
-├── db_config.json          # 数据库状态配置
+├── config/                 # 配置目录
+│   └── config.json         # 主配置文件（路径、参数、自定义同义词）
+│
+├── src/                    # 源代码
+│   ├── manage_spec.py      # 统一管理脚本
+│   ├── search.py           # 检索脚本
+│   ├── config_loader.py    # 配置加载模块
+│   ├── cache.py            # 模糊缓存
+│   ├── query_expansion.py  # 查询扩展
+│   ├── reranker.py         # 重排序
+│   ├── log_manager.py      # 日志管理
+│   ├── batch_add_all.py    # 批量初始化脚本
+│   └── parse_specs_v2.py   # 批量解析脚本
+│
+├── data/                   # 数据目录（程序管理）
+│   ├── chroma_db/          # 向量数据库
+│   │   ├── rel19/          # Rel-19 数据库
+│   │   └── rel20/          # Rel-20 数据库
+│   ├── db_config.json      # 数据库状态
+│   ├── synonyms_builtin.json   # 内置同义词（50术语，只读）
+│   └── synonyms_auto.json      # 自动补充同义词
+│
+├── logs/                   # 日志目录（自动轮转，gitignore）
 ├── requirements.txt        # Python依赖
 ├── README.md               # 本文件
-├── SKILL.md                # Skill 说明
-│
-├── chroma_db\              # 分库数据库
-│   ├── rel19\             # Rel-19 数据库
-│   └── rel20\             # Rel-20 数据库（未来）
-│
-├── batch_add_all.py        # 批量初始化脚本（保留）
-├── parse_specs_v2.py       # 批量解析脚本（保留）
-│
-└── chroma_db_complete_v2\  # 旧数据库（已废弃）
+└── SKILL.md                # Skill 说明
 ```
 
 ---
@@ -407,9 +435,13 @@ CLI工具                    →  + 模糊缓存               →  + API服务
 | 2026-04-05 | V1.0 | 初始搭建，7个核心协议 |
 | 2026-04-06 | V2.0 | 混合检索，批量添加 |
 | 2026-04-07 | V2.0 | 分库存储，版本对比，统一管理 |
-| 2026-04-07 | **V2.1** | 系统优势文档，下一步策划 |
-| 2026-04-07 | **V2.1** | 可移植性改造：配置文件+环境变量，移除所有硬编码路径 |
+| 2026-04-07 | **V2.1** | 目录结构重构：config/, src/, data/, logs/ |
+| 2026-04-07 | **V2.1** | 新增查询扩展：50个内置术语同义词 |
+| 2026-04-07 | **V2.1** | 新增重排序：Cross-Encoder二次排序 |
+| 2026-04-07 | **V2.1** | 新增模糊缓存：LRU缓存相似查询 |
+| 2026-04-07 | **V2.1** | 新增日志轮转：10MB×5文件限制 |
+| 2026-04-08 | **V2.1** | 文档更新：同步新目录结构和使用方式 |
 
 ---
 
-**最后更新：2026-04-07 23:15**
+**最后更新：2026-04-08 02:15**
