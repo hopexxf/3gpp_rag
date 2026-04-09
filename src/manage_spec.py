@@ -80,9 +80,8 @@ def DB_CONFIG_FILE() -> Path:
     return WORK_DIR() / "db_config.json"
 
 # Auto mode detection thresholds
-NORMAL_MAX_SIZE_MB = 1.0      # Files <= 1MB: normal mode
-SKIP_LARGE_MAX_SIZE_MB = 3.0  # Files <= 3MB: skip-large mode
-# Files > 3MB: chunked mode
+CHUNK_THRESHOLD_MB = 1.5      # ≤1.5MB: normal, >1.5MB: chunked
+SKIP_LARGE_MAX_SIZE_MB = 1.5  # Same threshold for skip-large mode
 
 # ============== Logging ==============
 
@@ -250,11 +249,129 @@ def parse_docx(docx_path: Path, spec_number: str, release: str) -> List[dict]:
     save_clause()
     return clauses
 
-def parse_docx_chunked(docx_path: Path, spec_number: str, release: str, chunk_size_mb: float = 0.5) -> List[dict]:
-    """Parse large docx in chunks."""
-    # For now, use same logic as normal parsing
-    # Chunked parsing is mainly for memory efficiency
-    return parse_docx(docx_path, spec_number, release)
+def parse_docx_chunked(docx_path: Path, spec_number: str, release: str, max_chunk_mb: float = 1.5) -> List[dict]:
+    """Parse large docx by splitting into chapter-based chunks.
+    
+    Strategy:
+    1. Parse all clauses from the document
+    2. Group clauses by top-level chapter (e.g., "4", "5", "6")
+    3. Merge small chapters into chunks ≤ max_chunk_mb
+    4. If a single chapter > max_chunk_mb, split at sub-clause level
+    
+    Args:
+        docx_path: Path to docx file
+        spec_number: Specification number (e.g., "38.133")
+        release: Release version (e.g., "Rel-19")
+        max_chunk_mb: Target max size per chunk in MB
+    
+    Returns:
+        List of clause dictionaries (same format as parse_docx)
+    """
+    log(f"  [chunked] Starting chunked parsing: {docx_path.name}", "INFO")
+    log(f"  [chunked] Target max chunk size: {max_chunk_mb}MB", "INFO")
+    
+    # Step 1: Parse all clauses first
+    all_clauses = parse_docx(docx_path, spec_number, release)
+    if not all_clauses:
+        log(f"  [chunked] No clauses parsed, returning empty list", "WARN")
+        return []
+    
+    log(f"  [chunked] Parsed {len(all_clauses)} total clauses", "INFO")
+    
+    # Step 2: Group by top-level chapter
+    chapters: Dict[str, List[dict]] = defaultdict(list)
+    for clause in all_clauses:
+        clause_num = clause["clause"]
+        top_level = clause_num.split('.')[0]
+        chapters[top_level].append(clause)
+    
+    log(f"  [chunked] Grouped into {len(chapters)} top-level chapters: {sorted(chapters.keys())}", "INFO")
+    
+    # Step 3: Estimate size of a clause list
+    def estimate_size_mb(clause_list: List[dict]) -> float:
+        """Estimate total content size in MB."""
+        total_chars = sum(len(c["content"]) for c in clause_list)
+        return total_chars / (1024 * 1024)
+    
+    # Step 4: Build chunks
+    chunks: List[List[dict]] = []
+    current_chunk: List[dict] = []
+    current_size: float = 0.0
+    
+    for chapter_num in sorted(chapters.keys(), key=lambda x: int(x)):
+        chapter_clauses = chapters[chapter_num]
+        chapter_size = estimate_size_mb(chapter_clauses)
+        
+        if chapter_size > max_chunk_mb:
+            # Single chapter too large: split by sub-clauses
+            log(f"  [chunked]   Chapter {chapter_num}: {chapter_size:.2f}MB > {max_chunk_mb}MB, splitting by sub-clauses", "INFO")
+            
+            # Flush current chunk first
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = []
+                current_size = 0.0
+            
+            # Split this chapter
+            sub_chunks: List[List[dict]] = []
+            current_sub: List[dict] = []
+            current_sub_size: float = 0.0
+            
+            for clause in chapter_clauses:
+                clause_size = estimate_size_mb([clause])
+                
+                if clause_size > max_chunk_mb:
+                    # Even single clause is too large: save current, emit single
+                    if current_sub:
+                        sub_chunks.append(current_sub)
+                    sub_chunks.append([clause])
+                    current_sub = []
+                    current_sub_size = 0.0
+                elif current_sub_size + clause_size > max_chunk_mb:
+                    sub_chunks.append(current_sub)
+                    current_sub = [clause]
+                    current_sub_size = clause_size
+                else:
+                    current_sub.append(clause)
+                    current_sub_size += clause_size
+            
+            if current_sub:
+                sub_chunks.append(current_sub)
+            
+            chunks.extend(sub_chunks)
+            log(f"  [chunked]     Split into {len(sub_chunks)} sub-chunks", "INFO")
+        
+        elif current_size + chapter_size <= max_chunk_mb:
+            # Fits in current chunk
+            current_chunk.extend(chapter_clauses)
+            current_size += chapter_size
+        
+        else:
+            # Doesn't fit: flush current and start new
+            if current_chunk:
+                chunks.append(current_chunk)
+            current_chunk = chapter_clauses
+            current_size = chapter_size
+    
+    # Don't forget the last chunk
+    if current_chunk:
+        chunks.append(current_chunk)
+    
+    # Step 5: Log chunk summary
+    log(f"  [chunked] Generated {len(chunks)} chunks:", "INFO")
+    for i, chunk in enumerate(chunks):
+        chunk_size = estimate_size_mb(chunk)
+        chapters_in_chunk = set(c["clause"].split('.')[0] for c in chunk)
+        log(f"  [chunked]   Chunk {i+1}: {len(chunk)} clauses, ~{chunk_size:.2f}MB, chapters: {sorted(chapters_in_chunk)}", "INFO")
+    
+    # Step 6: Flatten all chunks back into clauses list
+    # But renumber IDs to avoid collisions
+    result = []
+    for chunk in chunks:
+        for clause in chunk:
+            result.append(clause)
+    
+    return result
 
 # ============== File Operations ==============
 
@@ -275,12 +392,13 @@ def get_file_size_mb(file_path: Path) -> float:
     return file_path.stat().st_size / (1024 * 1024)
 
 def determine_mode(docx_path: Path) -> str:
-    """Determine parsing mode based on file size."""
+    """Determine parsing mode based on file size.
+    
+    Auto mode uses this to decide: normal vs chunked.
+    """
     size_mb = get_file_size_mb(docx_path)
-    if size_mb <= NORMAL_MAX_SIZE_MB:
+    if size_mb <= CHUNK_THRESHOLD_MB:
         return "normal"
-    elif size_mb <= SKIP_LARGE_MAX_SIZE_MB:
-        return "skip_large"
     else:
         return "chunked"
 
@@ -326,22 +444,59 @@ class SpecManager:
                         continue
                 
                 size_mb = get_file_size_mb(docx_file)
-                file_mode = mode if mode != "auto" else determine_mode(docx_file)
                 
-                if file_mode == "skip_large" and size_mb > max_size_mb:
-                    log(f"  SKIP: {docx_file.name} ({size_mb:.1f}MB > {max_size_mb}MB)")
+                # Determine effective mode for this file
+                if mode == "skip":
+                    log(f"  [skip] {docx_file.name} ({size_mb:.1f}MB) - skipped by mode")
                     skipped_files.append((docx_file.name, size_mb))
                     continue
                 
-                log(f"  Parsing: {docx_file.name} ({size_mb:.1f}MB, mode={file_mode})")
-                
-                if file_mode == "chunked":
-                    clauses = parse_docx_chunked(docx_file, spec_number, release)
+                if mode == "auto":
+                    effective_mode = determine_mode(docx_file)
                 else:
-                    clauses = parse_docx(docx_file, spec_number, release)
+                    effective_mode = mode
+                
+                log(f"  [start] {docx_file.name} ({size_mb:.1f}MB, mode={effective_mode})")
+                clauses = []
+                parse_success = False
+                
+                # Auto-fallback: normal → chunked → skip
+                if effective_mode == "normal":
+                    try:
+                        log(f"  [normal] Attempting normal parse...")
+                        clauses = parse_docx(docx_file, spec_number, release)
+                        log(f"  [normal] ✓ Success: {len(clauses)} clauses")
+                        parse_success = True
+                    except Exception as e:
+                        log(f"  [normal] ✗ Failed: {e}", "WARN")
+                        # Fall through to chunked
+                        if mode == "auto":
+                            log(f"  [auto] Falling back to chunked mode...", "WARN")
+                            effective_mode = "chunked"
+                        else:
+                            effective_mode = "failed"
+                
+                # Try chunked if normal failed or was already chunked
+                if not parse_success and effective_mode == "chunked":
+                    try:
+                        log(f"  [chunked] Attempting chunked parse...")
+                        clauses = parse_docx_chunked(docx_file, spec_number, release)
+                        log(f"  [chunked] ✓ Success: {len(clauses)} clauses")
+                        parse_success = True
+                    except Exception as e:
+                        log(f"  [chunked] ✗ Failed: {e}", "ERROR")
+                        effective_mode = "failed"
+                
+                # If both failed and auto mode, skip the file
+                if not parse_success:
+                    if mode == "auto":
+                        log(f"  [skip] Both normal and chunked failed, skipping file", "WARN")
+                        skipped_files.append((docx_file.name, size_mb))
+                    else:
+                        log(f"  ERROR: {docx_file.name} parse failed in {mode} mode", "ERROR")
+                    continue
                 
                 all_clauses.extend(clauses)
-                log(f"    {len(clauses)} clauses")
             
             if skipped_files:
                 log(f"Skipped {len(skipped_files)} large files")
@@ -638,9 +793,9 @@ def create_parser() -> argparse.ArgumentParser:
     add_parser = subparsers.add_parser("add", help="Add a specification")
     add_parser.add_argument("spec", help="Specification number (e.g., 38.300)")
     add_parser.add_argument("--release", default="Rel-19", help="Release version")
-    add_parser.add_argument("--mode", choices=["auto", "normal", "skip-large", "chunked"], 
-                           default="auto", help="Parsing mode")
-    add_parser.add_argument("--max-size", type=float, default=3.0, help="Max file size (MB)")
+    add_parser.add_argument("--mode", choices=["auto", "normal", "chunked", "skip"], 
+                           default="auto", help="Parsing mode: auto (normal→chunked→skip) | normal | chunked | skip")
+    add_parser.add_argument("--max-size", type=float, default=CHUNK_THRESHOLD_MB, help="Max file size (MB), default 1.5MB")
     add_parser.add_argument("--chapters", help="Specific chapters to add (comma-separated)")
     
     # update command
@@ -746,21 +901,27 @@ def main():
     elif args.command == "diff":
         result = spec_manager.diff(args.spec, args.from_release, args.to_release)
         print(f"\n=== Diff: {args.spec} ({args.from_release} -> {args.to_release}) ===")
-        print(f"From: {result['from_count']} clauses")
-        print(f"To: {result['to_count']} clauses")
-        print(f"Added: {result['added_count']}")
-        print(f"Removed: {result['removed_count']}")
-        if result['added']:
-            print(f"\nNew clauses: {', '.join(result['added'][:20])}")
-        if result['removed']:
-            print(f"Removed clauses: {', '.join(result['removed'][:20])}")
+        if "error" in result:
+            print(f"Error: {result['error']}")
+        else:
+            print(f"From: {result['from_count']} clauses")
+            print(f"To: {result['to_count']} clauses")
+            print(f"Added: {result['added_count']}")
+            print(f"Removed: {result['removed_count']}")
+            if result['added']:
+                print(f"\nNew clauses: {', '.join(result['added'][:20])}")
+            if result['removed']:
+                print(f"Removed clauses: {', '.join(result['removed'][:20])}")
     
     elif args.command == "new-clauses":
         clauses = spec_manager.new_clauses(args.spec, args.from_release, args.to_release)
-        print(f"\n=== New clauses in {args.spec} ({args.from_release} -> {args.to_release}) ===")
-        for clause in clauses:
-            print(f"  {clause}")
-        print(f"\nTotal: {len(clauses)} new clauses")
+        if isinstance(clauses, dict) and "error" in clauses:
+            print(f"\nError: {clauses['error']}")
+        else:
+            print(f"\n=== New clauses in {args.spec} ({args.from_release} -> {args.to_release}) ===")
+            for clause in clauses:
+                print(f"  {clause}")
+            print(f"\nTotal: {len(clauses)} new clauses")
     
     elif args.command == "batch-add":
         specs = args.specs.split(",") if args.specs else None
@@ -813,7 +974,18 @@ def main():
         config = load_config()
         if args.list:
             print("\n=== Configuration ===")
-            print(json.dumps(config, indent=2))
+            def json_serializable(obj):
+                """Recursively convert Path objects and other non-serializable types."""
+                if isinstance(obj, Path):
+                    return str(obj)
+                elif isinstance(obj, dict):
+                    return {k: json_serializable(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [json_serializable(i) for i in obj]
+                elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes)):
+                    return str(obj)
+                return obj
+            print(json.dumps(json_serializable(config), indent=2))
         elif args.set:
             key, value = args.set
             config[key] = value

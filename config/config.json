@@ -43,8 +43,7 @@
   "processing": {
     "_comment": "处理参数",
     "encoding": "utf-8",
-    "normal_max_size_mb": 1.0,
-    "skip_large_max_size_mb": 3.0,
+    "chunk_threshold_mb": 1.5,
     "batch_size": 100,
     "max_content_length": 5000
   },
