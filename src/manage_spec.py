@@ -151,8 +151,8 @@ class DatabaseManager:
     def get_client(self, release: str) -> chromadb.PersistentClient:
         """Get or create database client for a release."""
         if release not in self.clients:
-            db_name = self.config.get("current_databases", {}).get(release, f"chroma_db_{release.lower()}")
-            db_path = WORK_DIR / db_name
+            # Use data/chroma_db/{release_lower} path (consistent with README design)
+            db_path = WORK_DIR() / "data" / "chroma_db" / release.lower().replace("-", "")
             db_path.mkdir(parents=True, exist_ok=True)
             self.clients[release] = chromadb.PersistentClient(
                 path=str(db_path),
@@ -174,7 +174,20 @@ class DatabaseManager:
     
     def list_releases(self) -> List[str]:
         """List available releases."""
-        return list(self.config.get("current_databases", {}).keys())
+        # First check config
+        config_releases = list(self.config.get("current_databases", {}).keys())
+        if config_releases:
+            return config_releases
+        
+        # Fallback: scan data/chroma_db/ directory
+        work_dir = WORK_DIR()
+        db_dir = work_dir / "data" / "chroma_db"
+        releases = []
+        if db_dir.exists():
+            for sub_dir in db_dir.iterdir():
+                if sub_dir.is_dir():
+                    releases.append(sub_dir.name)
+        return releases
 
 # ============== Document Parsing ==============
 
@@ -248,7 +261,7 @@ def parse_docx_chunked(docx_path: Path, spec_number: str, release: str, chunk_si
 def find_zip_file(spec_number: str, release: str) -> Optional[Path]:
     """Find zip file for a specification."""
     series = spec_number.split('.')[0]
-    release_dir = PROTOCOL_BASE / release / f"{series}_series"
+    release_dir = PROTOCOL_BASE() / release / f"{series}_series"
     if not release_dir.exists():
         return None
     
@@ -346,7 +359,7 @@ class SpecManager:
                 return False
             
             # Remove existing
-            existing = collection.get(where={"spec": spec_number, "release": release})
+            existing = collection.get(where={"$and": [{"spec": spec_number}, {"release": release}]})
             if existing['ids']:
                 log(f"Removing {len(existing['ids'])} existing documents")
                 collection.delete(ids=existing['ids'])
@@ -395,7 +408,7 @@ class SpecManager:
             log(f"ERROR: Collection not found for {release}", "ERROR")
             return False
         
-        existing = collection.get(where={"spec": spec_number, "release": release})
+        existing = collection.get(where={"$and": [{"spec": spec_number}, {"release": release}]})
         if not existing['ids']:
             log(f"WARNING: {spec_number} not found in {release}")
             return True
@@ -489,7 +502,7 @@ class SpecManager:
             specs_to_add = spec_list
         else:
             # Find all available specs
-            release_dir = PROTOCOL_BASE / release / "38_series"
+            release_dir = PROTOCOL_BASE() / release / "38_series"
             if not release_dir.exists():
                 return {"error": f"Release directory not found: {release_dir}"}
             
@@ -699,7 +712,6 @@ def main():
         return
     
     # Initialize
-    init_config()
     db_manager = DatabaseManager()
     spec_manager = SpecManager(db_manager)
     

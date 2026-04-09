@@ -114,7 +114,7 @@ class BM25Index:
                 "id": doc_id,
                 "text": text,
                 "spec": meta.get("spec", ""),
-                "version": meta.get("version", ""),
+                "release": meta.get("release", ""),
                 "clause": meta.get("clause", ""),
                 "title": meta.get("title", ""),
                 "level": meta.get("level", 1),
@@ -144,7 +144,7 @@ class BM25Index:
             # Apply filters
             if spec_filter and entry["spec"] != spec_filter:
                 continue
-            if version_filter and entry["version"] != version_filter:
+            if version_filter and entry.get("release", "") != version_filter:
                 continue
             results.append((entry, float(score)))
 
@@ -315,7 +315,7 @@ def search(query, spec_filter=None, version_filter=None, release=None, top_n=5,
     if release is None:
         release = config.get("default_release", "Rel-19")
     
-    # Use the actual database path with data/ prefix
+    # Use data/chroma_db/{release_lower} path (consistent with README design)
     work_dir = get_path(config, "work_dir")
     DB_DIR = work_dir / "data" / "chroma_db" / release.lower().replace("-", "")
     
@@ -334,7 +334,7 @@ def search(query, spec_filter=None, version_filter=None, release=None, top_n=5,
     if spec_filter:
         conditions.append({"spec": spec_filter})
     if version_filter:
-        conditions.append({"version": version_filter})
+        conditions.append({"release": version_filter})  # Use 'release' not 'version'
     if len(conditions) > 1:
         where_filter = {"$and": conditions}
     elif len(conditions) == 1:
@@ -387,7 +387,7 @@ def search(query, spec_filter=None, version_filter=None, release=None, top_n=5,
     for entry, score, vec_rank, bm25_rank in final_results:
         result = {
             "spec": entry['spec'],
-            "version": entry['version'],
+            "version": entry.get('release', ''),
             "clause": entry['clause'],
             "title": entry['title'],
             "level": entry['level'],
@@ -542,7 +542,7 @@ Examples:
         releases = [config.get("default_release", "Rel-19")]
 
     # Search across releases
-    all_results = {"results": [], "query": args.query}
+    all_results = {"results": [], "query": args.query, "status": "ok", "mode": args.mode}
     
     for release in releases:
         result = search(
@@ -559,6 +559,8 @@ Examples:
             for r in result["results"]:
                 r["release"] = release
             all_results["results"].extend(result["results"])
+        else:
+            print(f"[DEBUG] Search failed for {release}: {result.get('message')}", file=sys.stderr)
     
     # Sort by score
     all_results["results"].sort(key=lambda x: x.get("score", 0), reverse=True)
