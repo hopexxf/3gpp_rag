@@ -1,8 +1,8 @@
-# 3GPP RAN RAG 检索系统 V2.1
+# 3GPP RAN RAG 检索系统 V2.2
 
 ## 简介
 
-本系统是一个针对 3GPP RAN（无线接入网）协议规范的语义检索工具。V2.1 版本支持：
+本系统是一个针对 3GPP RAN（无线接入网）协议规范的语义检索工具。V2.2 版本支持：
 
 - **分库存储**：按 Release 独立数据库（Rel-19、Rel-20 等）
 - **混合检索**：BM25 关键词 + 向量语义 RRF 融合
@@ -13,10 +13,9 @@
 **管理工具**: `src/manage_spec.py`
 **检索工具**: `src/search.py`
 
-**V2.1 新增功能**:
+**V2.2 新增功能**:
 - **查询扩展**：50个内置电信术语同义词，支持自动学习补充
 - **重排序**：Cross-Encoder二次排序，提升Top-K精度
-- **模糊缓存**：相似查询缓存，毫秒级响应
 
 ---
 
@@ -51,9 +50,9 @@ pip install -r requirements.txt
     "enabled": true,
     "model_local_path": "/your/path/ms-marco-MiniLM-L6-v2"
   },
-  "cache": {
+  "reranker": {
     "enabled": true,
-    "max_size": 100
+    "model_local_path": "C:/myfile/project/ms-marco-MiniLM-L6-v2"
   }
 }
 ```
@@ -120,10 +119,9 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 - **附录过滤**：自动跳过不适合检索的附录表格
 - **核心章节优先**：收录协议核心规范，非测试用例
 
-### 6️⃣ 智能查询增强（V2.1新增）
+### 6️⃣ 智能查询增强
 - **查询扩展**：50个内置电信术语同义词，自动补充专业词汇
 - **重排序优化**：Cross-Encoder二次排序，Top-K精度提升15-25%
-- **模糊缓存**：相似查询缓存，重复查询毫秒级响应
 - **日志轮转**：自动管理日志大小，10MB×5文件限制
 
 ---
@@ -259,7 +257,6 @@ python src/manage_spec.py config --set default_release Rel-20
 │   ├── manage_spec.py      # 统一管理脚本
 │   ├── search.py           # 检索脚本
 │   ├── config_loader.py    # 配置加载模块
-│   ├── cache.py            # 模糊缓存
 │   ├── query_expansion.py  # 查询扩展
 │   ├── reranker.py         # 重排序
 │   ├── log_manager.py      # 日志管理
@@ -324,20 +321,20 @@ python src/manage_spec.py config --set default_release Rel-20
 
 ---
 
-## V2.1 已完成功能 ✅
+## V2.2 已完成功能 ✅
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
 | **目录结构重构** | ✅ | config/, src/, data/, logs/ 分离 |
 | **查询扩展** | ✅ | 50个内置术语 + 自动学习 + 用户自定义 |
 | **重排序** | ✅ | Cross-Encoder二次排序，本地模型优先 |
-| **模糊缓存** | ✅ | LRU缓存，100条容量 |
+| **模糊缓存** | ❌ | 已移除（CLI场景无收益） |
 | **日志轮转** | ✅ | 10MB×5文件限制 |
 | **可移植配置** | ✅ | 配置文件+环境变量，无硬编码路径 |
 
 ---
 
-## V2.2 计划功能（未来）
+## V2.3 计划功能（未来）
 
 | 功能 | 优先级 | 说明 |
 |------|--------|------|
@@ -345,6 +342,7 @@ python src/manage_spec.py config --set default_release Rel-20
 | **Docker部署** | 中 | 容器化部署支持 |
 | **LLM集成** | 低 | 结合大模型生成回答 |
 | **更多协议** | 低 | 支持Rel-20及后续版本 |
+| **死代码清理** | 高 | 移除未接入的 cache.py |
 
 ---
 
@@ -355,20 +353,7 @@ python src/manage_spec.py config --set default_release Rel-20
 | **影响分析** | 分析条款变更影响范围 | 需要NetworkX图谱，增加复杂度 |
 | **语义图谱** | 构建条款关系图 | 与向量化检索功能重叠 |
 | **邻域上下文** | 获取条款父子节点 | 与向量化检索功能重叠 |
-
----
-
-### 改进路线图
-
-```
-V2.0 (已完成)                 V2.1 (已完成)                V2.2 (计划)
-─────────────────────────────────────────────────────────────────────────────
-Hybrid检索                  →  Hybrid + Cross-Encoder    →  + Web API
-硬编码路径                  →  配置文件+环境变量          →  + Docker部署
-关键词/语义查询             →  + 同义词扩展              →  + LLM集成
-单协议版本检索              →  + 版本对比               →  + 更多协议
-CLI工具                    →  + 模糊缓存               →  + API服务
-```
+| **cache缓存** | 节省向量计算时间，减少磁盘I/O | 当前CLI无收益，未来多worker常驻才有价值 |
 
 ---
 
@@ -395,6 +380,7 @@ CLI工具                    →  + 模糊缓存               →  + API服务
 | 2026-04-09 | **V2.1** | 数据库状态更新：44协议/14251条款，38.133（RRM）入库1542条款 |
 | 2026-04-09 | **V2.1** | Bug修复：diff/new-clauses命令错误处理；config输出JSON序列化；manage_spec add三级递进（normal→chunked→skip） |
 | 2026-04-09 | **V2.1** | 功能自检：status/list/search/validate/report/config命令全部通过 |
+| 2026-04-11 | **V2.2** | 移除死代码：删除未接入的 src/cache.py 及 config.json 中的 cache 配置 |
 
 ---
 
