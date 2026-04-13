@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 3GPP RAG - Unified Specification Management Tool
 Version: 2.0.0
@@ -465,10 +465,10 @@ class SpecManager:
                     try:
                         log(f"  [normal] Attempting normal parse...")
                         clauses = parse_docx(docx_file, spec_number, release)
-                        log(f"  [normal] ✓ Success: {len(clauses)} clauses")
+                        log(f"  [normal] OK Success: {len(clauses)} clauses")
                         parse_success = True
                     except Exception as e:
-                        log(f"  [normal] ✗ Failed: {e}", "WARN")
+                        log(f"  [normal] X Failed: {e}", "WARN")
                         # Fall through to chunked
                         if mode == "auto":
                             log(f"  [auto] Falling back to chunked mode...", "WARN")
@@ -481,10 +481,10 @@ class SpecManager:
                     try:
                         log(f"  [chunked] Attempting chunked parse...")
                         clauses = parse_docx_chunked(docx_file, spec_number, release)
-                        log(f"  [chunked] ✓ Success: {len(clauses)} clauses")
+                        log(f"  [chunked] OK Success: {len(clauses)} clauses")
                         parse_success = True
                     except Exception as e:
-                        log(f"  [chunked] ✗ Failed: {e}", "ERROR")
+                        log(f"  [chunked] X Failed: {e}", "ERROR")
                         effective_mode = "failed"
                 
                 # If both failed and auto mode, skip the file
