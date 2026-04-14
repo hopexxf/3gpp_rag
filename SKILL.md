@@ -244,6 +244,65 @@ python src/manage_spec.py config --list
 python src/manage_spec.py config --set default_release Rel-20
 ```
 
+### 5. 协议下载
+
+```powershell
+# 下载 Rel-19 协议（自动从 config.json 读取路径）
+pwsh download_3gpp_r19.ps1
+
+# 指定系列下载（默认 38_series）
+pwsh download_3gpp_r19.ps1 -Series 38_series
+
+# 下载 Rel-20
+pwsh download_3gpp_r19.ps1 -Release Rel-20
+
+# 强制重新下载（跳过已存在检查）
+pwsh download_3gpp_r19.ps1 -Force
+
+# 仅打印下载地址，不下载
+pwsh download_3gpp_r19.ps1 -DryRun
+```
+
+**参数说明：**
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `-Series` | 下载哪个系列的协议（38_series 等） | `38_series` |
+| `-Release` | 下载哪个 Release 版本 | `Rel-19` |
+| `-Force` | 强制重新下载已存在的文件 | `$false` |
+| `-DryRun` | 仅打印 URL，不下载 | `$false` |
+
+> **前提条件**：在 `config/config.json` 中配置 `paths.protocol_base` 为协议文件根目录。脚本会自动拼接 `Rel-19/38_series/` 子路径。
+
+---
+
+### 6. setup.py 批量管理
+
+```bash
+# 查看所有命令
+python setup.py --help
+
+# 增量检查：哪些协议待入库
+python setup.py check-only
+
+# 批量入库：安装所有待入库协议（自动跳过已入库）
+python setup.py add --release Rel-19
+
+# 仅入库指定协议
+python setup.py add 38.533 --release Rel-19
+
+# 批量更新：重新入库已收录协议（用于覆盖解析结果）
+python setup.py update --release Rel-19
+
+# 查看数据库当前协议列表
+python setup.py list-db --release Rel-19
+```
+
+> **注意**：`add` 命令会逐个解析 docx 文件，超大文件（>20MB）首次入库耗时较长，解析过程有超时回退（60s python-docx → streaming parser → 记录跳过）。
+
+---
+
+
 ---
 
 ## 目录结构
@@ -304,8 +363,8 @@ python src/manage_spec.py config --set default_release Rel-20
 | **统计报告 (E1)** | `report` | 生成数据库统计报告 |
 | **数据校验 (E2)** | `validate` | 校验数据完整性 |
 | **配置管理 (E3)** | `config` | 管理分库配置 |
-
----
+| **setup.py 主命令 (F)** | `python setup.py --help` | 初始化、批量入库、增量检查 |
+| **协议下载 (G)** | `pwsh download_3gpp_r19.ps1` | 下载 Rel-19 协议压缩包 |
 
 ## 未收录协议
 
