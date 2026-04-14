@@ -143,9 +143,18 @@ def save_db_config(config: dict):
 class DatabaseManager:
     """Manage multiple ChromaDB databases."""
     
+    _instance: Optional["DatabaseManager"] = None
+    
     def __init__(self):
         self.config = load_config()
         self.clients: Dict[str, chromadb.PersistentClient] = {}
+    
+    @classmethod
+    def get_instance(cls) -> "DatabaseManager":
+        """Get singleton instance of DatabaseManager."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
         
     def get_client(self, release: str) -> chromadb.PersistentClient:
         """Get or create database client for a release."""
@@ -187,6 +196,21 @@ class DatabaseManager:
                 if sub_dir.is_dir():
                     releases.append(sub_dir.name)
         return releases
+    
+    def get_loaded_specs(self, release: str) -> Dict[str, int]:
+        """Scan ChromaDB directly, return {spec_number: clause_count}.
+        
+        This is the reliable source for incremental judgment —
+        reads from DB instead of manifest.json.
+        """
+        collection = self.get_collection(release, create=False)
+        if not collection:
+            return {}
+        count = collection.count()
+        if count == 0:
+            return {}
+        results = collection.get(limit=min(count, 50000), include=["metadatas"])
+        return dict(Counter(m.get("spec", m.get("spec_name", "")) for m in results["metadatas"]))
 
 # ============== Document Parsing ==============
 
@@ -195,8 +219,111 @@ def parse_clause_number(text: str) -> Optional[str]:
     match = re.match(r'^(\d+(?:\.\d+)*)\s+', text.strip())
     return match.group(1) if match else None
 
-def parse_docx(docx_path: Path, spec_number: str, release: str) -> List[dict]:
-    """Parse a docx file and return clauses."""
+
+def _parse_docx_streaming(docx_path: Path, spec_number: str, release: str) -> List[dict]:
+    """Streaming parser: extract text from XML without python-docx.
+    
+    Fallback for files that cause python-docx to hang.
+    Uses zipfile + xml.etree.ElementTree - no object model overhead.
+    """
+    import zipfile
+    import xml.etree.ElementTree as ET
+    
+    file_stem = docx_path.stem
+    clauses = []
+    current_clause = None
+    current_content = []
+    id_counter = {}
+    
+    # XML namespaces for OOXML
+    NS = {
+        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+        'w14': 'http://schemas.microsoft.com/office/word/2010/wordml'
+    }
+    
+    def save_clause():
+        if current_clause and current_content:
+            cn, title = current_clause
+            content = '\n'.join(current_content).strip()
+            if len(content) >= 10:
+                base_id = f"{spec_number}_{release}_{file_stem}_{cn}"
+                if base_id in id_counter:
+                    id_counter[base_id] += 1
+                    doc_id = f"{base_id}_v{id_counter[base_id]}"
+                else:
+                    id_counter[base_id] = 1
+                    doc_id = base_id
+                
+                clauses.append({
+                    "id": doc_id,
+                    "spec": spec_number,
+                    "release": release,
+                    "clause": cn,
+                    "title": title,
+                    "content": content[:5000],
+                    "level": len(cn.split('.')),
+                    "file": file_stem
+                })
+    
+    try:
+        with zipfile.ZipFile(docx_path, 'r') as zf:
+            xml_content = zf.read('word/document.xml')
+        
+        # Use iterparse + clear() to avoid loading full XML DOM into memory.
+        # This prevents memory accumulation on very large documents.
+        XML_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+        W_P = f'{{{XML_NS}}}p'
+        W_T = f'{{{XML_NS}}}t'
+        W_PSTYLE = f'{{{XML_NS}}}pStyle'
+        W_VAL = f'{{{XML_NS}}}val'
+        
+        # Build a context manager compatible wrapper
+        import io
+        events = ('end',)
+        context = ET.iterparse(io.BytesIO(xml_content), events=events)
+        
+        for event, para in context:
+            if para.tag != W_P:
+                continue
+            
+            # Extract all text from this paragraph
+            texts = [t.text for t in para.iter(W_T) if t.text]
+            text = ''.join(texts).strip()
+            if not text:
+                para.clear()
+                continue
+            
+            # Detect heading by pStyle
+            is_heading = False
+            for pPr in para.iter(W_P):
+                for pStyle in pPr.iter(W_PSTYLE):
+                    style_val = pStyle.get(W_VAL, '')
+                    if style_val.startswith('Heading') or style_val.startswith('1'):
+                        is_heading = True
+                        break
+            
+            clause_num = parse_clause_number(text) if is_heading else None
+            
+            if is_heading and clause_num:
+                save_clause()
+                title = re.sub(r'^\d+(?:\.\d+)*\s*', '', text).strip()
+                current_clause = (clause_num, title)
+                current_content = [f"## {clause_num} {title}"]
+            elif current_clause:
+                current_content.append(text)
+            
+            # Free this paragraph element immediately
+            para.clear()
+        
+        save_clause()
+        return clauses
+    except Exception as e:
+        log(f"  [streaming] FAILED: {e}", "ERROR")
+        return []
+
+
+def _parse_docx_impl(docx_path: Path, spec_number: str, release: str) -> List[dict]:
+    """Core parser using python-docx (may hang on deeply nested tables)."""
     file_stem = docx_path.stem
     doc = Document(str(docx_path))
     
@@ -248,6 +375,49 @@ def parse_docx(docx_path: Path, spec_number: str, release: str) -> List[dict]:
     
     save_clause()
     return clauses
+
+
+def _run_parser_in_process(args: tuple) -> List[dict]:
+    """Entry point for multiprocessing."""
+    return _parse_docx_impl(*args)
+
+
+def parse_docx(docx_path: Path, spec_number: str, release: str, timeout_sec: int = 60) -> List[dict]:
+    """Parse docx with timeout fallback.
+    
+    1. Try python-docx with timeout (using Pool)
+    2. If timeout, fallback to streaming parser
+    3. If streaming also fails, return [] (caller logs skip)
+    """
+    import multiprocessing as mp
+    
+    # Fast path: small files unlikely to hang
+    size_mb = docx_path.stat().st_size / (1024 * 1024)
+    if size_mb < 5:
+        try:
+            return _parse_docx_impl(docx_path, spec_number, release)
+        except Exception as e:
+            log(f"  [parse] python-docx error on small file: {e}", "WARN")
+            return _parse_docx_streaming(docx_path, spec_number, release)
+    
+    # Large files: use Pool with timeout
+    try:
+        ctx = mp.get_context('spawn')
+        with ctx.Pool(processes=1) as pool:
+            async_result = pool.apply_async(
+                _parse_docx_impl, 
+                (docx_path, spec_number, release)
+            )
+            try:
+                result = async_result.get(timeout=timeout_sec)
+                return result
+            except mp.TimeoutError:
+                log(f"  [parse] TIMEOUT after {timeout_sec}s, falling back to streaming", "WARN")
+                pool.terminate()
+                return _parse_docx_streaming(docx_path, spec_number, release)
+    except Exception as e:
+        log(f"  [parse] Pool error: {e}, using streaming", "WARN")
+        return _parse_docx_streaming(docx_path, spec_number, release)
 
 def parse_docx_chunked(docx_path: Path, spec_number: str, release: str, max_chunk_mb: float = 1.5) -> List[dict]:
     """Parse large docx by splitting into chapter-based chunks.
@@ -497,6 +667,10 @@ class SpecManager:
                     continue
                 
                 all_clauses.extend(clauses)
+                
+                # Release memory after each docx file (prevents Document object accumulation)
+                import gc
+                gc.collect()
             
             if skipped_files:
                 log(f"Skipped {len(skipped_files)} large files")
@@ -550,6 +724,10 @@ class SpecManager:
             
             if batch_ids:
                 collection.add(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
+            
+            # Release memory after bulk add
+            import gc
+            gc.collect()
             
             log(f"SUCCESS: Added {len(all_clauses)} clauses")
             return True
@@ -812,6 +990,10 @@ def create_parser() -> argparse.ArgumentParser:
     list_parser = subparsers.add_parser("list", help="List specifications")
     list_parser.add_argument("--release", default="Rel-19", help="Release version")
     
+    # list-db command (reads directly from DB, JSON output)
+    list_db_parser = subparsers.add_parser("list-db", help="List loaded specs from DB (JSON output)")
+    list_db_parser.add_argument("--release", default="Rel-19", help="Release version")
+    
     # status command
     subparsers.add_parser("status", help="Show database status")
     
@@ -887,6 +1069,10 @@ def main():
         for spec, count in sorted(specs.items()):
             print(f"  {spec}: {count} clauses")
         print(f"\nTotal: {len(specs)} specs, {sum(specs.values())} clauses")
+    
+    elif args.command == "list-db":
+        specs = db_manager.get_loaded_specs(args.release)
+        print(json.dumps(specs, sort_keys=True))
     
     elif args.command == "status":
         status = spec_manager.status()

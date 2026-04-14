@@ -1,8 +1,31 @@
-# 3GPP Rel-19 下载脚本 (v3 - 修复子目录判断)
+# 3GPP Rel-19 下载脚本 (v4 - 配置化)
 $ErrorActionPreference = 'SilentlyContinue'
-$baseUrl = 'https://www.3gpp.org/ftp/Specs/2026-03/Rel-19'
-$baseDir = 'C:\myfile\project\3gpp_protocol\protocol'
-$series = @('22_series','23_series','24_series','25_series','26_series','27_series','28_series','29_series','31_series','32_series','33_series','34_series','35_series','36_series','37_series','38_series')
+
+# 从 config.json 读取配置
+$configPath = Join-Path $PSScriptRoot 'config\config.json'
+if (-not (Test-Path $configPath)) {
+    Write-Host "ERROR: config.json not found at $configPath" -ForegroundColor Red
+    exit 1
+}
+$config = Get-Content $configPath -Raw | ConvertFrom-Json
+
+$protocolBase = $config.paths.protocol_base
+$defaultRelease = $config.database.default_release
+$requiredSubdir = $config.protocol_structure.required_subdir
+
+# 从配置推断 Release URL 路径（如 Rel-19 → 2026-03/Rel-19）
+$releaseMap = @{
+    'Rel-19' = '2026-03/Rel-19'
+    'Rel-20' = '2026-06/Rel-20'
+}
+$releasePath = if ($releaseMap[$defaultRelease]) { $releaseMap[$defaultRelease] } else { $defaultRelease }
+
+$baseUrl = "https://www.3gpp.org/ftp/Specs/$releasePath"
+$baseDir = Join-Path $protocolBase $defaultRelease
+$baseDir = Join-Path $baseDir $requiredSubdir
+$series = @('22_series','23_series','24_series','25_series','26_series','27_series',
+            '28_series','29_series','31_series','32_series','33_series','34_series',
+            '35_series','36_series','37_series','38_series')
 
 $totalDl = 0; $totalSkip = 0; $totalErr = 0
 $failed = @()
@@ -98,7 +121,7 @@ function Process-Folder($url, $localDir) {
     }
 }
 
-Write-Host "=== 3GPP Rel-19 Downloader v3 ===" -ForegroundColor Cyan
+Write-Host "=== 3GPP $defaultRelease Downloader v4 ===" -ForegroundColor Cyan
 Write-Host "Output: $baseDir"
 Write-Host ""
 

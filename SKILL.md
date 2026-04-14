@@ -1,8 +1,8 @@
-# 3GPP RAN RAG 检索系统 V2.2
+# 3GPP RAN RAG 检索系统 V2.3
 
 ## 简介
 
-本系统是一个针对 3GPP RAN（无线接入网）协议规范的语义检索工具。V2.2 版本支持：
+本系统是一个针对 3GPP RAN（无线接入网）协议规范的语义检索工具。V2.3 版本支持：
 
 - **分库存储**：按 Release 独立数据库（Rel-19、Rel-20 等）
 - **混合检索**：BM25 关键词 + 向量语义 RRF 融合
@@ -334,15 +334,23 @@ python src/manage_spec.py config --set default_release Rel-20
 
 ---
 
-## V2.3 计划功能（未来）
+## V2.3 已完成功能
+
+| 功能 | 说明 |
+|------|------|
+| **超时回退** | python-docx 60s超时自动降级到 streaming parser |
+| **单例模式** | DatabaseManager 单例，get_loaded_specs() |
+| **list-db 命令** | 直接查 DB，替代 manifest.json |
+| **setup.py 简化** | 424行→193行，--check-only 增量检查 |
+| **download_3gpp_r19.ps1** | 配置化，从 config.json 读取路径 |
+
+## V2.4 计划功能
 
 | 功能 | 优先级 | 说明 |
 |------|--------|------|
 | **Web API** | 中 | 提供HTTP API接口 |
 | **Docker部署** | 中 | 容器化部署支持 |
 | **LLM集成** | 低 | 结合大模型生成回答 |
-| **更多协议** | 低 | 支持Rel-20及后续版本 |
-| **死代码清理** | 高 | 移除未接入的 cache.py |
 
 ---
 
@@ -381,7 +389,8 @@ python src/manage_spec.py config --set default_release Rel-20
 | 2026-04-09 | **V2.1** | Bug修复：diff/new-clauses命令错误处理；config输出JSON序列化；manage_spec add三级递进（normal→chunked→skip） |
 | 2026-04-09 | **V2.1** | 功能自检：status/list/search/validate/report/config命令全部通过 |
 | 2026-04-11 | **V2.2** | 移除死代码：删除未接入的 src/cache.py 及 config.json 中的 cache 配置 |
+| 2026-04-14 | **V2.3** | 重构 Phase 0-6：超时回退、单例、list-db、setup.py简化、ps1配置化 |
 
 ---
 
-**最后更新：2026-04-09 15:45**
+**最后更新：2026-04-14 09:20**
