@@ -1,0 +1,110 @@
+[2026-04-14 10:19:03] [INFO] Adding 38.133 (Rel-19)
+[2026-04-14 10:19:03] [INFO] Found: C:\myfile\project\3gpp_protocol\Rel-19\38_series\38133-j40.zip
+[2026-04-14 10:19:04] [INFO] Found 22 docx files
+[2026-04-14 10:19:04] [INFO]   [start] 38133-j40_cover.docx (0.4MB, mode=normal)
+[2026-04-14 10:19:04] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:19:10] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:19:11] [INFO]   [start] 38133-j40_s0-7.docx (1.2MB, mode=normal)
+[2026-04-14 10:19:11] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:21:55] [INFO]   [normal] OK Success: 427 clauses
+[2026-04-14 10:21:55] [INFO]   [start] 38133-j40_s10-11.docx (1.4MB, mode=normal)
+[2026-04-14 10:21:55] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:22:38] [INFO]   [normal] OK Success: 247 clauses
+[2026-04-14 10:22:38] [INFO]   [start] 38133-j40_s12-13.docx (0.3MB, mode=normal)
+[2026-04-14 10:22:38] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:22:50] [INFO]   [normal] OK Success: 68 clauses
+[2026-04-14 10:22:50] [INFO]   [start] 38133-j40_s8-8.docx (1.0MB, mode=normal)
+[2026-04-14 10:22:50] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:24:32] [INFO]   [normal] OK Success: 314 clauses
+[2026-04-14 10:24:33] [INFO]   [start] 38133-j40_s9-9.docx (1.9MB, mode=chunked)
+[2026-04-14 10:24:33] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:24:33] [INFO]   [chunked] Starting chunked parsing: 38133-j40_s9-9.docx
+[2026-04-14 10:24:33] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:27:03] [INFO]   [chunked] Parsed 486 total clauses
+[2026-04-14 10:27:03] [INFO]   [chunked] Grouped into 1 top-level chapters: ['9']
+[2026-04-14 10:27:03] [INFO]   [chunked] Generated 1 chunks:
+[2026-04-14 10:27:03] [INFO]   [chunked]   Chunk 1: 486 clauses, ~0.68MB, chapters: ['9']
+[2026-04-14 10:27:03] [INFO]   [chunked] OK Success: 486 clauses
+[2026-04-14 10:27:03] [INFO]   [start] 38133-j40_sA.1-A.3.docx (0.7MB, mode=normal)
+[2026-04-14 10:27:03] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:27:19] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:27:19] [INFO]   [start] 38133-j40_sA.10-A.10.docx (1.0MB, mode=normal)
+[2026-04-14 10:27:19] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:27:42] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:27:42] [INFO]   [start] 38133-j40_sA.11-A.12.docx (1.3MB, mode=normal)
+[2026-04-14 10:27:42] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:28:19] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:28:19] [INFO]   [start] 38133-j40_sA.13-A.14.docx (1.8MB, mode=chunked)
+[2026-04-14 10:28:19] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:28:19] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.13-A.14.docx
+[2026-04-14 10:28:19] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:29:05] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:29:06] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:29:07] [INFO]   [start] 38133-j40_sA.15-A.16.docx (3.4MB, mode=chunked)
+[2026-04-14 10:29:07] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:29:07] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.15-A.16.docx
+[2026-04-14 10:29:07] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:30:07] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:30:07] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:30:08] [INFO]   [start] 38133-j40_sA.17-A.18.docx (2.0MB, mode=chunked)
+[2026-04-14 10:30:08] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:30:08] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.17-A.18.docx
+[2026-04-14 10:30:08] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:30:52] [INFO]   [chunked] Parsed 1 total clauses
+[2026-04-14 10:30:52] [INFO]   [chunked] Grouped into 1 top-level chapters: ['11']
+[2026-04-14 10:30:52] [INFO]   [chunked] Generated 1 chunks:
+[2026-04-14 10:30:52] [INFO]   [chunked]   Chunk 1: 1 clauses, ~0.00MB, chapters: ['11']
+[2026-04-14 10:30:52] [INFO]   [chunked] OK Success: 1 clauses
+[2026-04-14 10:30:52] [INFO]   [start] 38133-j40_sA.19-A.XX.docx (1.4MB, mode=normal)
+[2026-04-14 10:30:52] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:31:55] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:31:55] [INFO]   [start] 38133-j40_sA.4-A.406.docx (1.9MB, mode=chunked)
+[2026-04-14 10:31:55] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:31:55] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.4-A.406.docx
+[2026-04-14 10:31:55] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:32:34] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:32:34] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:32:34] [INFO]   [start] 38133-j40_sA.407-A.5.docx (3.1MB, mode=chunked)
+[2026-04-14 10:32:34] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:32:34] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.407-A.5.docx
+[2026-04-14 10:32:34] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:33:25] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:33:25] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:33:26] [INFO]   [start] 38133-j40_sA.6-A.605.docx (3.0MB, mode=chunked)
+[2026-04-14 10:33:26] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:33:26] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.6-A.605.docx
+[2026-04-14 10:33:26] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:34:32] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:34:32] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:34:33] [INFO]   [start] 38133-j40_sA.606-A.611.docx (3.2MB, mode=chunked)
+[2026-04-14 10:34:33] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:34:33] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.606-A.611.docx
+[2026-04-14 10:34:33] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:35:40] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:35:40] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:35:40] [INFO]   [start] 38133-j40_sA.7-A.704.docx (1.2MB, mode=normal)
+[2026-04-14 10:35:40] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:36:13] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:36:13] [INFO]   [start] 38133-j40_sA.705-A.705.docx (2.5MB, mode=chunked)
+[2026-04-14 10:36:13] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:36:13] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.705-A.705.docx
+[2026-04-14 10:36:13] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:37:00] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:37:00] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:37:01] [INFO]   [start] 38133-j40_sA.706-A.711.docx (3.0MB, mode=chunked)
+[2026-04-14 10:37:01] [INFO]   [chunked] Attempting chunked parse...
+[2026-04-14 10:37:01] [INFO]   [chunked] Starting chunked parsing: 38133-j40_sA.706-A.711.docx
+[2026-04-14 10:37:01] [INFO]   [chunked] Target max chunk size: 1.5MB
+[2026-04-14 10:38:06] [WARN]   [chunked] No clauses parsed, returning empty list
+[2026-04-14 10:38:07] [INFO]   [chunked] OK Success: 0 clauses
+[2026-04-14 10:38:08] [INFO]   [start] 38133-j40_sA.8-A.9.docx (1.0MB, mode=normal)
+[2026-04-14 10:38:08] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:38:29] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:38:29] [INFO]   [start] 38133-j40_sB.1-XX.docx (0.8MB, mode=normal)
+[2026-04-14 10:38:29] [INFO]   [normal] Attempting normal parse...
+[2026-04-14 10:38:32] [INFO]   [normal] OK Success: 0 clauses
+[2026-04-14 10:38:32] [INFO] Total clauses: 1543
+[2026-04-14 10:38:32] [INFO] Removing 486 existing documents
+[2026-04-14 10:39:26] [INFO] SUCCESS: Added 1543 clauses
+ADD RESULT: True
+38.133 clauses: 1543
