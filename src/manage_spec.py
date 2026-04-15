@@ -574,6 +574,28 @@ def determine_mode(docx_path: Path) -> str:
 
 # ============== Core Operations ==============
 
+def _scan_available_specs(release: str) -> List[str]:
+    """Scan protocol directory for available spec zip files.
+
+    Returns sorted list of unique spec numbers (e.g., ["38.300", "38.133"]).
+    Deduplicates by spec number (keeps first found).
+    """
+    release_dir = PROTOCOL_BASE() / release / "38_series"
+    if not release_dir.exists():
+        return []
+
+    seen = set()
+    specs = []
+    for zf in release_dir.glob("*.zip"):
+        m = re.search(r'(\d{2})(\d{3})', zf.stem)
+        if m:
+            sn = f"{m.group(1)}.{m.group(2)}"
+            if sn not in seen:
+                seen.add(sn)
+                specs.append(sn)
+    return sorted(specs)
+
+
 class SpecManager:
     """Manage specification operations."""
     
@@ -826,7 +848,7 @@ class SpecManager:
         return diff_result.get("added", [])
     
     # ========== Batch Operations (C1, C2, C3) ==========
-    
+
     def batch_add(self, release: str, spec_list: Optional[List[str]] = None) -> dict:
         """Batch add specifications."""
         log(f"Batch add for {release}")
@@ -834,16 +856,9 @@ class SpecManager:
         if spec_list:
             specs_to_add = spec_list
         else:
-            # Find all available specs
-            release_dir = PROTOCOL_BASE() / release / "38_series"
-            if not release_dir.exists():
-                return {"error": f"Release directory not found: {release_dir}"}
-            
-            specs_to_add = []
-            for zf in release_dir.glob("*.zip"):
-                spec_num = re.match(r'^(\d{2})(\d{3})', zf.stem)
-                if spec_num:
-                    specs_to_add.append(f"{spec_num.group(1)}.{spec_num.group(2)}")
+            specs_to_add = _scan_available_specs(release)
+            if not specs_to_add:
+                return {"error": f"No specs found in {PROTOCOL_BASE() / release / '38_series'}"}
         
         results = {"success": [], "failed": [], "total": len(specs_to_add)}
         
@@ -993,7 +1008,11 @@ def create_parser() -> argparse.ArgumentParser:
     # list-db command (reads directly from DB, JSON output)
     list_db_parser = subparsers.add_parser("list-db", help="List loaded specs from DB (JSON output)")
     list_db_parser.add_argument("--release", default="Rel-19", help="Release version")
-    
+
+    # check-pending command (compare disk zips vs DB)
+    check_pending_parser = subparsers.add_parser("check-pending", help="Check specs not yet in DB")
+    check_pending_parser.add_argument("--release", default="Rel-19", help="Release version")
+
     # status command
     subparsers.add_parser("status", help="Show database status")
     
@@ -1073,7 +1092,17 @@ def main():
     elif args.command == "list-db":
         specs = db_manager.get_loaded_specs(args.release)
         print(json.dumps(specs, sort_keys=True))
-    
+
+    elif args.command == "check-pending":
+        loaded = db_manager.get_loaded_specs(args.release)
+        available = _scan_available_specs(args.release)
+        pending = [s for s in available if s not in loaded]
+        print(f"Disk: {len(available)} specs, DB: {len(loaded)} specs, Pending: {len(pending)}")
+        if pending:
+            print(f"Pending: {', '.join(pending)}")
+        else:
+            print("All specs are up to date.")
+
     elif args.command == "status":
         status = spec_manager.status()
         print("\n=== Database Status ===")

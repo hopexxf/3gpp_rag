@@ -6,7 +6,7 @@
     "_protocol_base": "协议源文件根目录，需包含 Rel-19/R19/rel19/REL19 格式的子目录",
     "protocol_base": "C:/myfile/project/3gpp_protocol",
     "_log_dir": "日志输出目录，自动创建。若为空或null，则使用work_dir/logs",
-    "log_dir": "C:/myfile/qclaw/log"
+    "log_dir": ""
   },
   "protocol_structure": {
     "_comment": "协议目录结构约束，程序自动检测以下格式的Release目录",

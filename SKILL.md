@@ -47,10 +47,6 @@ pip install -r requirements.txt
   "reranker": {
     "enabled": true,
     "model_local_path": "/your/path/ms-marco-MiniLM-L6-v2"
-  },
-  "reranker": {
-    "enabled": true,
-    "model_local_path": "C:/myfile/project/ms-marco-MiniLM-L6-v2"
   }
 }
 ```
@@ -128,7 +124,7 @@ python -c "from sentence_transformers import SentenceTransformer; SentenceTransf
 
 **当前版本：Rel-19**
 - **协议数**：46 个
-- **条款数**：15,867 个
+- **条款数**：15,342 个
 - **覆盖率**：46/49 协议（93.9%）
 - **数据库大小**：~50 MB
 - **数据库位置**：`data/chroma_db/rel19/`
@@ -156,16 +152,16 @@ data/chroma_db/
 | 38.423 | XnAP 协议 | 823 |
 | 38.141 | BS 一致性测试 | 811 |
 | 38.508 | UE 一致性测试参数 | 728 |
-| 38.104 | BS 射频 | 725 |
 | 38.181 | FR2 射频 | 706 |
 | 38.300 | NR 总体架构 | 594 |
 | 38.331 | RRC 层 | 589 |
 | 38.176 | BS 联合发射/接收 | 472 |
 | 38.106 | BS 射频附加 | 443 |
+| 38.108 | BS FR1-1 射频 | 323 |
 
 ### 其他协议
 
-38.101, 38.108, 38.113, 38.115, 38.151, 38.161, 38.191, 38.194, 38.195, 38.211, 38.212, 38.213, 38.214, 38.291, 38.304, 38.306, 38.307, 38.321, 38.322, 38.355, 38.391, 38.401, 38.410, 38.521, 38.561, 38.761, 38.768, 38.774, 38.863, 38.870, 38.901 等
+38.101, 38.104, 38.108, 38.113, 38.115, 38.151, 38.161, 38.191, 38.194, 38.195, 38.211, 38.212, 38.213, 38.214, 38.291, 38.304, 38.306, 38.307, 38.321, 38.322, 38.355, 38.391, 38.401, 38.410, 38.521, 38.522, 38.561, 38.761, 38.768, 38.774, 38.863, 38.870, 38.901 等
 
 
 
@@ -276,29 +272,40 @@ pwsh download_3gpp_r19.ps1 -DryRun
 
 ---
 
-### 6. setup.py 批量管理
+### 6. 安装器 & 批量管理
+
+#### setup.ps1（首次部署编排）
 
 ```bash
-# 查看所有命令
-python setup.py --help
+# 全量初始化：依赖+模型+协议+数据库
+.\setup.ps1
 
-# 增量检查：哪些协议待入库
-python setup.py check-only
+# 仅入库（增量，安全可重复执行）
+.\setup.ps1 -Mode db
 
-# 批量入库：安装所有待入库协议（自动跳过已入库）
-python setup.py add --release Rel-19
-
-# 仅入库指定协议
-python setup.py add 38.533 --release Rel-19
-
-# 批量更新：重新入库已收录协议（用于覆盖解析结果）
-python setup.py update --release Rel-19
-
-# 查看数据库当前协议列表
-python setup.py list-db --release Rel-19
+# 仅下载协议
+.\setup.ps1 -Mode dl
 ```
 
-> **注意**：`add` 命令会逐个解析 docx 文件，超大文件（>20MB）首次入库耗时较长，解析过程有超时回退（60s python-docx → streaming parser → 记录跳过）。
+> 安装器仅用于首次部署编排，日常操作走 manage_spec.py。
+
+#### manage_spec.py 批量命令
+
+```bash
+# 增量检查：哪些协议待入库
+py -3 src/manage_spec.py check-pending --release Rel-19
+
+# 批量入库：自动扫描 zip 并入库（跳过已入库）
+py -3 src/manage_spec.py batch-add --release Rel-19
+
+# 批量更新：重新入库已收录协议
+py -3 src/manage_spec.py batch-update --release Rel-19
+
+# 查看数据库状态
+py -3 src/manage_spec.py status
+```
+
+> **注意**：`batch-add` 会逐个解析 docx 文件，超大文件（>20MB）首次入库耗时较长，解析过程有超时回退（60s python-docx → streaming parser → 记录跳过）。`batch-add` 天然幂等，重复执行不会产生重复数据。
 
 ---
 
@@ -316,6 +323,7 @@ python setup.py list-db --release Rel-19
 │   ├── manage_spec.py      # 统一管理脚本
 │   ├── search.py           # 检索脚本
 │   ├── config_loader.py    # 配置加载模块
+│   ├── read_config.py      # 配置读取工具
 │   ├── query_expansion.py  # 查询扩展
 │   ├── reranker.py         # 重排序
 │   ├── log_manager.py      # 日志管理
@@ -330,7 +338,17 @@ python setup.py list-db --release Rel-19
 │   ├── synonyms_builtin.json   # 内置同义词（50术语，只读）
 │   └── synonyms_auto.json      # 自动补充同义词
 │
+├── tests/                  # 单元测试
+│   ├── conftest.py
+│   ├── test_batch_add_idempotent.py
+│   ├── test_check_pending.py
+│   ├── test_scan_available_specs.py
+│   └── test_setup_ps1.py
+│
 ├── logs/                   # 日志目录（自动轮转，gitignore）
+├── download_3gpp_r19.ps1   # 协议下载脚本
+├── setup.ps1               # 首次部署编排
+├── test_config.ps1         # 配置验证脚本
 ├── requirements.txt        # Python依赖
 ├── README.md               # 本文件
 └── SKILL.md                # Skill 说明
@@ -363,7 +381,9 @@ python setup.py list-db --release Rel-19
 | **统计报告 (E1)** | `report` | 生成数据库统计报告 |
 | **数据校验 (E2)** | `validate` | 校验数据完整性 |
 | **配置管理 (E3)** | `config` | 管理分库配置 |
-| **setup.py 主命令 (F)** | `python setup.py --help` | 初始化、批量入库、增量检查 |
+| **安装器 (F)** | `.\setup.ps1 -Mode db` | 首次部署编排（环境检查、依赖安装、协议下载、批量入库） |
+| **批量管理 (F2)** | `manage_spec.py batch-add` | 增量扫描、批量入库、幂等执行 |
+| **增量检查 (F3)** | `manage_spec.py check-pending` | 对比磁盘 zip 与 DB，列出待入库协议 |
 | **协议下载 (G)** | `pwsh download_3gpp_r19.ps1` | 下载 Rel-19 协议压缩包 |
 
 ## 未收录协议
@@ -400,7 +420,11 @@ python setup.py list-db --release Rel-19
 | **超时回退** | python-docx 60s超时自动降级到 streaming parser |
 | **单例模式** | DatabaseManager 单例，get_loaded_specs() |
 | **list-db 命令** | 直接查 DB，替代 manifest.json |
-| **setup.py 简化** | 424行→193行，--check-only 增量检查 |
+| **_scan_available_specs** | 提取公共函数，setup.ps1 + batch-add 共用 |
+| **check-pending 命令** | 对比磁盘与 DB，替代 setup.py --check-only |
+| **setup.ps1 精简** | 280行→163行，删除内联构建/下载/验证，改调 manage_spec.py |
+| **setup.py 删除** | 193行，全部功能已迁移至 manage_spec.py CLI |
+| **单元测试** | 13个测试用例覆盖 scan/pending/batch-add/setup.ps1 |
 | **download_3gpp_r19.ps1** | 配置化，从 config.json 读取路径 |
 
 ## V2.4 计划功能
@@ -449,8 +473,10 @@ python setup.py list-db --release Rel-19
 | 2026-04-09 | **V2.1** | 功能自检：status/list/search/validate/report/config命令全部通过 |
 | 2026-04-11 | **V2.2** | 移除死代码：删除未接入的 src/cache.py 及 config.json 中的 cache 配置 |
 | 2026-04-14 | **V2.3** | 重构 Phase 0-6：超时回退、单例、list-db、setup.py简化、ps1配置化 |
+| 2026-04-15 | **V2.3** | 安装器改造：setup.ps1精简(280→125行)、setup.py删除、_scan_available_specs提取、check-pending命令、13个单元测试 |
 | 2026-04-14 | **V2.3** | 新增入库：38.133(RRM)1543条+38.523(UE一致性测试)1498条，DB扩至46协议/15867条款 |
+| 2026-04-15 | **V2.3** | 文档更新：刷新DB状态(15342条款)、目录结构、核心协议表；删除重构产物docs/ |
 
 ---
 
-**最后更新：2026-04-14 13:57**
+**最后更新：2026-04-15 12:35**
